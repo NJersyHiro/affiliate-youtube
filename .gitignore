@@ -185,8 +185,8 @@ token.json
 !assets/**/*.png
 !assets/**/*.jpg
 
-# Model files
-models/
+# Model files (ML models)
+saved_models/
 *.pkl
 *.h5
 *.pt
