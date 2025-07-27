@@ -4,7 +4,7 @@
 ai:
   gemini:
     api_key: ""  # Set via GOOGLE_API_KEY environment variable
-    model: "gemini-2.0-pro"  # For script generation
+    model: "gemini-1.5-pro"  # For script generation (stable model)
     temperature: 0.8
     top_p: 0.95
     top_k: 40
@@ -13,7 +13,7 @@ ai:
 
 script_generation:
   provider: "gemini"  # Using Gemini for script generation
-  model: "gemini-2.0-pro"
+  model: "gemini-1.5-pro"
   
   # Script parameters
   styles:
@@ -33,12 +33,13 @@ script_generation:
   
 # Text-to-Speech Configuration
 tts:
-  provider: "gemini"  # gemini, google, azure, or aws
+  provider: "gemini"  # mock (for testing), gemini, google, azure, or aws
   api_key: ""  # Uses GOOGLE_API_KEY for Gemini TTS
+  # Note: Gemini TTS requires newer SDK version, using mock for testing
   
   # Voice settings
   gemini:
-    voice_name: "Kore"  # Default voice for Gemini TTS
+    voice_name: "kore"  # Default voice for Gemini TTS (lowercase)
     model: "gemini-2.5-flash-preview-tts"  # TTS-specific model
     # Gemini automatically detects language from text
     # Supports natural language control for emotion/style

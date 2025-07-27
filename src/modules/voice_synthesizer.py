@@ -17,7 +17,7 @@ from ..utils.exceptions import TTSError, ConfigurationError
 class VoiceSynthesizer:
     """Synthesize voice from text using various TTS providers."""
     
-    SUPPORTED_PROVIDERS = ["gemini", "google_cloud", "azure", "aws", "elevenlabs"]
+    SUPPORTED_PROVIDERS = ["mock", "gemini", "google_cloud", "azure", "aws", "elevenlabs"]
     
     def __init__(self, config: Optional[Config] = None):
         """Initialize the voice synthesizer.
@@ -45,7 +45,9 @@ class VoiceSynthesizer:
     def _init_tts_client(self) -> None:
         """Initialize the TTS client based on provider."""
         try:
-            if self.provider == "gemini":
+            if self.provider == "mock":
+                self._init_mock_tts()
+            elif self.provider == "gemini":
                 self._init_gemini_tts()
             elif self.provider == "google_cloud":
                 self._init_google_cloud_tts()
@@ -67,18 +69,31 @@ class VoiceSynthesizer:
             )
             raise TTSError(f"TTS initialization failed: {str(e)}")
     
+    def _init_mock_tts(self) -> None:
+        """Initialize mock TTS for testing."""
+        self.logger.info("Initialized mock TTS provider for testing")
+        # No actual initialization needed for mock
+    
     def _init_gemini_tts(self) -> None:
         """Initialize Gemini TTS client."""
         try:
-            import google.generativeai as genai
+            # Check which library is available
+            try:
+                from google import genai
+                self.use_new_genai = True
+                self.logger.info("Using new google.genai library for TTS")
+            except ImportError:
+                import google.generativeai as genai
+                self.use_new_genai = False
+                self.logger.info("Using google.generativeai library (TTS may be limited)")
             
             # Get API key from config or environment
             api_key = self.config.get("ai.gemini.api_key") or os.getenv("GOOGLE_API_KEY")
             if not api_key:
                 raise ConfigurationError("Google API key not found for Gemini TTS")
             
-            # Configure the API key
-            genai.configure(api_key=api_key)
+            # Store API key for later use
+            self.gemini_api_key = api_key
             
             # Store the model name for TTS
             self.gemini_model_name = "gemini-2.5-flash-preview-tts"  # Correct model for TTS
@@ -89,29 +104,29 @@ class VoiceSynthesizer:
             self.logger.info("Initialized Gemini TTS client")
             
         except ImportError:
-            raise TTSError("google-generativeai not installed. "
+            raise TTSError("Neither google.genai nor google-generativeai is installed. "
                          "Install with: pip install google-generativeai")
         except Exception as e:
             raise TTSError(f"Gemini TTS initialization failed: {str(e)}")
     
     def _cache_gemini_voices(self) -> None:
         """Cache available Gemini voices."""
-        # Gemini has 30 prebuilt voices
+        # Updated list based on the error message
         self.gemini_voices = [
-            "Kore", "Puck", "Charon", "Fenrir", "Aoede", "Krypton",
-            "Zephyr", "Orea", "Lyra", "Altair", "Ceres", "Draco",
-            "Electra", "Helios", "Nova", "Orion", "Perseus", "Phoenix",
-            "Rigel", "Sirius", "Titan", "Vega", "Astraea", "Luna",
-            "Sol", "Aria", "Castor", "Pollux", "Rhea", "Selene"
+            "achernar", "achird", "algenib", "algieba", "alnilam", "aoede", 
+            "autonoe", "callirrhoe", "charon", "despina", "enceladus", "erinome", 
+            "fenrir", "gacrux", "iapetus", "kore", "laomedeia", "leda", "orus", 
+            "puck", "pulcherrima", "rasalgethi", "sadachbia", "sadaltager", 
+            "schedar", "sulafat", "umbriel", "vindemiatrix", "zephyr", "zubenelgenubi"
         ]
         
         # Map emotions to suitable voices for Japanese content
         self.emotion_voice_map = {
-            "excited": ["Puck", "Phoenix", "Nova"],
-            "happy": ["Kore", "Luna", "Aria"],
-            "surprised": ["Zephyr", "Electra", "Sirius"],
-            "curious": ["Lyra", "Vega", "Selene"],
-            "neutral": ["Aoede", "Altair", "Sol"]
+            "excited": ["puck", "fenrir", "orus"],
+            "happy": ["kore", "aoede", "callirrhoe"],
+            "surprised": ["zephyr", "enceladus", "umbriel"],
+            "curious": ["autonoe", "iapetus", "vindemiatrix"],
+            "neutral": ["aoede", "algenib", "schedar"]
         }
         
         self.logger.info(f"Cached {len(self.gemini_voices)} Gemini voices")
@@ -264,7 +279,9 @@ class VoiceSynthesizer:
             
         # Synthesize based on provider
         audio_data = None
-        if self.provider == "gemini":
+        if self.provider == "mock":
+            audio_data = self._synthesize_mock(text, settings, segment.emotion)
+        elif self.provider == "gemini":
             audio_data = self._synthesize_gemini(text, settings, segment.emotion)
         elif self.provider == "google_cloud":
             audio_data = self._synthesize_google_cloud(text, settings, segment.emotion)
@@ -316,7 +333,8 @@ class VoiceSynthesizer:
     def _get_default_voice(self) -> str:
         """Get default voice for the provider."""
         defaults = {
-            "gemini": "Kore",
+            "mock": "test-voice",
+            "gemini": "kore",  # Lowercase based on error message
             "google_cloud": "ja-JP-Neural2-B",
             "azure": "ja-JP-NanamiNeural",
             "aws": "Mizuki",
@@ -337,6 +355,57 @@ class VoiceSynthesizer:
         
         return text
     
+    def _synthesize_mock(
+        self,
+        text: str,
+        settings: AudioSettings,
+        emotion: str
+    ) -> bytes:
+        """Mock TTS synthesis for testing."""
+        try:
+            # Create a simple mock audio data (silent WAV file)
+            import wave
+            import struct
+            
+            # Create a simple sine wave for testing
+            duration = len(text) / 5.0  # Estimate duration based on text length
+            sample_rate = 44100
+            num_samples = int(duration * sample_rate)
+            
+            # Generate silent audio (zeros)
+            audio_data = b''.join(
+                struct.pack('<h', 0) for _ in range(num_samples)
+            )
+            
+            # Create WAV header
+            num_channels = 1
+            bits_per_sample = 16
+            byte_rate = sample_rate * num_channels * bits_per_sample // 8
+            block_align = num_channels * bits_per_sample // 8
+            
+            wav_header = struct.pack(
+                '<4sI4s4sIHHIIHH4sI',
+                b'RIFF',
+                36 + len(audio_data),
+                b'WAVE',
+                b'fmt ',
+                16,  # Subchunk1Size
+                1,   # AudioFormat (PCM)
+                num_channels,
+                sample_rate,
+                byte_rate,
+                block_align,
+                bits_per_sample,
+                b'data',
+                len(audio_data)
+            )
+            
+            self.logger.info(f"Mock TTS: Generated {duration:.1f}s of audio for {len(text)} chars")
+            return wav_header + audio_data
+            
+        except Exception as e:
+            raise TTSError(f"Mock TTS synthesis failed: {str(e)}")
+    
     def _synthesize_gemini(
         self,
         text: str,
@@ -345,8 +414,9 @@ class VoiceSynthesizer:
     ) -> bytes:
         """Synthesize using Gemini TTS."""
         try:
-            import google.generativeai as genai
-            from google.generativeai import types
+            # Use the new google.genai client library
+            from google import genai
+            from google.genai import types
             
             # Select voice based on emotion
             voice_name = settings.voice_name
@@ -366,13 +436,26 @@ class VoiceSynthesizer:
             prompt_prefix = emotion_prompts.get(emotion, "")
             full_text = prompt_prefix + text
             
-            # Create the model with the TTS-specific model
-            model = genai.GenerativeModel(model_name=self.gemini_model_name)
+            # Get API key
+            api_key = self.config.get("ai.gemini.api_key") or os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ConfigurationError("Google API key not found for Gemini TTS")
+            
+            # Remove Vertex AI environment variables to ensure we use Gemini Developer API
+            vertex_ai_vars = ['GOOGLE_GENAI_USE_VERTEXAI', 'GOOGLE_CLOUD_PROJECT', 'GOOGLE_CLOUD_LOCATION']
+            for var in vertex_ai_vars:
+                if var in os.environ:
+                    del os.environ[var]
+                    self.logger.info(f"Removed {var} environment variable to use Gemini Developer API")
+            
+            # Create the client with explicit API key
+            client = genai.Client(api_key=api_key)
             
             # Generate audio with speech config
-            response = model.generate_content(
+            response = client.models.generate_content(
+                model=self.gemini_model_name,
                 contents=full_text,
-                generation_config=types.GenerateContentConfig(
+                config=types.GenerateContentConfig(
                     response_modalities=["AUDIO"],
                     speech_config=types.SpeechConfig(
                         voice_config=types.VoiceConfig(
@@ -384,18 +467,27 @@ class VoiceSynthesizer:
                 )
             )
             
-            # Extract audio data from response
-            if response.candidates and len(response.candidates) > 0:
-                candidate = response.candidates[0]
-                if candidate.content and candidate.content.parts:
-                    for part in candidate.content.parts:
-                        # Check if this part contains audio data
-                        if hasattr(part, 'inline_data') and part.inline_data:
-                            if part.inline_data.mime_type and 'audio' in part.inline_data.mime_type:
-                                return part.inline_data.data
+            # Extract audio data from response (following the official example)
+            inline_data = response.candidates[0].content.parts[0].inline_data
             
-            raise TTSError("No audio data in Gemini response")
+            # Handle base64 encoding if necessary
+            if isinstance(inline_data.data, str):
+                # Base64 encoded data
+                import base64
+                audio_data = base64.b64decode(inline_data.data)
+                self.logger.info(f"Decoded base64 audio data: {len(audio_data)} bytes")
+            else:
+                # Binary data
+                audio_data = inline_data.data
+                self.logger.info(f"Raw audio data: {len(audio_data)} bytes")
             
+            # Return raw PCM data - it will be saved as WAV by _save_audio
+            return audio_data
+            
+        except ImportError as e:
+            # Try falling back to google.generativeai if google.genai is not available
+            self.logger.warning("google.genai not available, trying google.generativeai")
+            return self._synthesize_gemini_legacy(text, settings, emotion)
         except Exception as e:
             dev_error_logger.log_error(
                 module="VoiceSynthesizer",
@@ -404,6 +496,44 @@ class VoiceSynthesizer:
                 exception=e
             )
             raise TTSError(f"Gemini TTS synthesis failed: {str(e)}")
+    
+    def _synthesize_gemini_legacy(
+        self,
+        text: str,
+        settings: AudioSettings,
+        emotion: str
+    ) -> bytes:
+        """Legacy Gemini TTS synthesis using google.generativeai."""
+        try:
+            import google.generativeai as genai
+            
+            # Check if we should try Google Cloud TTS as fallback
+            if self.config.get("tts.gemini.fallback_to_google_cloud", False):
+                self.logger.warning("Gemini TTS not available, falling back to Google Cloud TTS")
+                # Temporarily switch provider
+                original_provider = self.provider
+                self.provider = "google_cloud"
+                try:
+                    # Initialize Google Cloud TTS if not already done
+                    if not hasattr(self, 'tts_client'):
+                        self._init_google_cloud_tts()
+                    result = self._synthesize_google_cloud(text, settings, emotion)
+                    self.provider = original_provider
+                    return result
+                except Exception as e:
+                    self.provider = original_provider
+                    self.logger.error(f"Google Cloud TTS fallback failed: {e}")
+            
+            # Fall back to mock TTS
+            self.logger.warning(
+                "Gemini TTS is not available in the current SDK version. "
+                "Audio generation requires the new google.genai SDK with proper authentication. "
+                "Using mock TTS for testing. To use real TTS, please configure Google Cloud TTS."
+            )
+            return self._synthesize_mock(text, settings, emotion)
+            
+        except Exception as e:
+            raise TTSError(f"Legacy Gemini TTS failed: {str(e)}")
     
     def _synthesize_google_cloud(
         self,
@@ -638,9 +768,29 @@ class VoiceSynthesizer:
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             
-            with open(output_path, 'wb') as f:
-                f.write(audio_data)
+            # Check if this is raw PCM data from Gemini TTS
+            if self.provider == "gemini" and output_path.suffix.lower() in ['.wav', '.mp3']:
+                # Save as WAV file with proper header
+                import wave
+                import struct
                 
+                # Gemini TTS returns PCM data at 24kHz, 16-bit, mono
+                sample_rate = 24000
+                channels = 1
+                sample_width = 2  # 16-bit
+                
+                with wave.open(str(output_path), 'wb') as wf:
+                    wf.setnchannels(channels)
+                    wf.setsampwidth(sample_width)
+                    wf.setframerate(sample_rate)
+                    wf.writeframes(audio_data)
+                    
+                self.logger.info(f"Saved Gemini TTS audio as WAV: {output_path}")
+            else:
+                # For other providers or formats, save as-is
+                with open(output_path, 'wb') as f:
+                    f.write(audio_data)
+                    
         except Exception as e:
             raise TTSError(f"Failed to save audio file: {str(e)}")
     

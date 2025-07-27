@@ -7,16 +7,16 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 import json
 
-from models.project import Project, ProjectStatus, VideoMetadata
-from models.script import ScriptStyle
-from modules.script_generator import ScriptGenerator
-from modules.script_processor import ScriptProcessor
-from modules.voice_synthesizer import VoiceSynthesizer
-from modules.visual_generator import VisualGenerator
-from modules.video_composer import VideoComposer
-from modules.social_media_manager import SocialMediaManager
-from utils import Config, setup_logger, get_logger, dev_error_logger
-from utils.exceptions import YouTubeShortsGeneratorError
+from .models.project import Project, ProjectStatus, VideoMetadata
+from .models.script import ScriptStyle
+from .modules.script_generator import ScriptGenerator
+from .modules.script_processor import ScriptProcessor
+from .modules.voice_synthesizer import VoiceSynthesizer
+from .modules.visual_generator import VisualGenerator
+from .modules.video_composer import VideoComposer
+from .modules.social_media_manager import SocialMediaManager
+from .utils import Config, setup_logger, get_logger, dev_error_logger
+from .utils.exceptions import YouTubeShortsGeneratorError
 
 
 class YouTubeShortsGenerator:
@@ -272,6 +272,250 @@ class YouTubeShortsGenerator:
         
         return results
     
+    # Module-specific test methods
+    def test_script_generation(self, service_name: str, affiliate_url: str, 
+                              style: str = "humorous") -> Dict[str, Any]:
+        """Test only script generation module."""
+        try:
+            self.logger.info("Testing script generation module...")
+            
+            # Generate script
+            script_style = ScriptStyle[style.upper()]
+            script = self.script_generator.generate_script(
+                service_name=service_name,
+                affiliate_url=affiliate_url,
+                style=script_style,
+                target_duration=self.config.get("video.max_duration", 60)
+            )
+            
+            # Save script
+            output_dir = self.config.get_output_path("scripts")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            script_file = output_dir / f"script_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            
+            with open(script_file, 'w', encoding='utf-8') as f:
+                json.dump(script.to_dict(), f, ensure_ascii=False, indent=2)
+            
+            self.logger.info(f"Script saved to: {script_file}")
+            
+            return {
+                'success': True,
+                'script': script,
+                'script_file': str(script_file),
+                'segments': len(script.segments),
+                'duration': script.total_duration
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Script generation test failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def test_script_processing(self, script_file: str) -> Dict[str, Any]:
+        """Test only script processing module."""
+        try:
+            self.logger.info("Testing script processing module...")
+            
+            # Load script
+            with open(script_file, 'r', encoding='utf-8') as f:
+                script_data = json.load(f)
+            
+            # Recreate script object
+            from .models.script import Script
+            script = Script.from_dict(script_data)
+            
+            # Process script
+            processed = self.script_processor.process_script(script)
+            segments = self.script_processor.export_for_tts(processed)
+            
+            # Save processed segments
+            output_dir = self.config.get_output_path("scripts")
+            output_file = output_dir / f"processed_{Path(script_file).stem}.json"
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(segments, f, ensure_ascii=False, indent=2)
+            
+            self.logger.info(f"Processed segments saved to: {output_file}")
+            
+            return {
+                'success': True,
+                'processed_file': str(output_file),
+                'segments': len(segments),
+                'total_duration': sum(s['duration'] for s in segments)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Script processing test failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def test_voice_synthesis(self, segments_file: str) -> Dict[str, Any]:
+        """Test only voice synthesis module."""
+        try:
+            self.logger.info("Testing voice synthesis module...")
+            
+            # Load segments
+            with open(segments_file, 'r', encoding='utf-8') as f:
+                segments = json.load(f)
+            
+            # Generate audio for each segment
+            project_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            audio_clips = self.voice_synthesizer.synthesize_script(segments, project_id)
+            
+            # Save audio info
+            output_dir = self.config.get_output_path("audio") / project_id
+            info_file = output_dir / "audio_info.json"
+            
+            audio_info = [
+                {
+                    'segment_id': clip.segment_id,
+                    'file_path': str(clip.file_path),
+                    'duration': clip.duration
+                }
+                for clip in audio_clips
+            ]
+            
+            with open(info_file, 'w', encoding='utf-8') as f:
+                json.dump(audio_info, f, ensure_ascii=False, indent=2)
+            
+            self.logger.info(f"Audio info saved to: {info_file}")
+            
+            return {
+                'success': True,
+                'audio_clips': len(audio_clips),
+                'total_duration': sum(clip.duration for clip in audio_clips),
+                'audio_dir': str(output_dir),
+                'info_file': str(info_file)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Voice synthesis test failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def test_visual_generation(self, segments_file: str) -> Dict[str, Any]:
+        """Test only visual generation module."""
+        try:
+            self.logger.info("Testing visual generation module...")
+            
+            # Load segments
+            with open(segments_file, 'r', encoding='utf-8') as f:
+                segments_data = json.load(f)
+            
+            # Generate visuals for each segment
+            project_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            all_visuals = []
+            
+            for seg_data in segments_data:
+                # Create segment object
+                from .models.script import ScriptSegment
+                segment = ScriptSegment(
+                    id=seg_data["id"],
+                    text=seg_data["text"],
+                    duration=seg_data["duration"],
+                    emotion=seg_data.get("emotion", "neutral"),
+                    emphasis_words=seg_data.get("emphasis_words", [])
+                )
+                
+                visuals = self.visual_generator.generate_segment_visuals(
+                    segment, segment.duration, project_id
+                )
+                all_visuals.append(visuals)
+            
+            # Save visual info
+            output_dir = self.config.get_output_path("visuals") / project_id
+            info_file = output_dir / "visual_info.json"
+            
+            visual_info = [
+                [
+                    {
+                        'type': v.type.value,
+                        'file_path': str(v.file_path),
+                        'duration': v.duration
+                    }
+                    for v in segment_visuals
+                ]
+                for segment_visuals in all_visuals
+            ]
+            
+            with open(info_file, 'w', encoding='utf-8') as f:
+                json.dump(visual_info, f, ensure_ascii=False, indent=2)
+            
+            self.logger.info(f"Visual info saved to: {info_file}")
+            
+            return {
+                'success': True,
+                'segments': len(all_visuals),
+                'total_visuals': sum(len(v) for v in all_visuals),
+                'visual_dir': str(output_dir),
+                'info_file': str(info_file)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Visual generation test failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def test_video_composition(self, audio_dir: str, visual_dir: str) -> Dict[str, Any]:
+        """Test only video composition module."""
+        try:
+            self.logger.info("Testing video composition module...")
+            
+            # Load audio and visual info
+            audio_info_file = Path(audio_dir) / "audio_info.json"
+            visual_info_file = Path(visual_dir) / "visual_info.json"
+            
+            with open(audio_info_file, 'r') as f:
+                audio_info = json.load(f)
+            
+            with open(visual_info_file, 'r') as f:
+                visual_info = json.load(f)
+            
+            # Create audio clips and visual elements
+            from .models.audio import AudioClip
+            from .models.video import VisualElement, VisualType
+            
+            audio_clips = [
+                AudioClip(
+                    segment_id=info['segment_id'],
+                    text="",  # Not needed for composition
+                    file_path=Path(info['file_path']),
+                    duration=info['duration']
+                )
+                for info in audio_info
+            ]
+            
+            visual_elements = [
+                [
+                    VisualElement(
+                        type=VisualType(v['type']),
+                        file_path=Path(v['file_path']),
+                        duration=v['duration']
+                    )
+                    for v in segment_visuals
+                ]
+                for segment_visuals in visual_info
+            ]
+            
+            # Create project
+            project = Project(
+                service_name="Test Video",
+                affiliate_url="https://example.com"
+            )
+            
+            # Compose video
+            video_path = self.video_composer.compose_video(
+                audio_clips, visual_elements, project
+            )
+            
+            self.logger.info(f"Video saved to: {video_path}")
+            
+            return {
+                'success': True,
+                'video_path': str(video_path),
+                'duration': sum(clip.duration for clip in audio_clips)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Video composition test failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
     def resume_project(self, project_file: str) -> Dict[str, Any]:
         """Resume a failed or incomplete project.
         
@@ -394,6 +638,29 @@ def main():
         help="Resume from saved project file"
     )
     
+    # Module testing arguments
+    parser.add_argument(
+        "--test-module",
+        choices=["script-gen", "script-proc", "voice", "visual", "video", "social"],
+        help="Test a specific module"
+    )
+    parser.add_argument(
+        "--script-file",
+        help="Path to script file (for script-proc, voice, visual tests)"
+    )
+    parser.add_argument(
+        "--segments-file",
+        help="Path to processed segments file (for voice, visual tests)"
+    )
+    parser.add_argument(
+        "--audio-dir",
+        help="Path to audio directory (for video test)"
+    )
+    parser.add_argument(
+        "--visual-dir",
+        help="Path to visual directory (for video test)"
+    )
+    
     args = parser.parse_args()
     
     try:
@@ -403,6 +670,83 @@ def main():
         # Set output directory if specified
         if args.output_dir:
             generator.config.set("output.base_dir", args.output_dir)
+        
+        # Handle module testing
+        if args.test_module:
+            if args.test_module == "script-gen":
+                result = generator.test_script_generation(
+                    args.service, args.url, args.style
+                )
+                if result['success']:
+                    print(f"✓ Script generation test successful!")
+                    print(f"  Script file: {result['script_file']}")
+                    print(f"  Segments: {result['segments']}")
+                    print(f"  Duration: {result['duration']:.1f}s")
+                else:
+                    print(f"✗ Script generation test failed: {result['error']}")
+                    sys.exit(1)
+                    
+            elif args.test_module == "script-proc":
+                if not args.script_file:
+                    print("✗ --script-file required for script processing test")
+                    sys.exit(1)
+                result = generator.test_script_processing(args.script_file)
+                if result['success']:
+                    print(f"✓ Script processing test successful!")
+                    print(f"  Processed file: {result['processed_file']}")
+                    print(f"  Segments: {result['segments']}")
+                    print(f"  Duration: {result['total_duration']:.1f}s")
+                else:
+                    print(f"✗ Script processing test failed: {result['error']}")
+                    sys.exit(1)
+                    
+            elif args.test_module == "voice":
+                if not args.segments_file:
+                    print("✗ --segments-file required for voice synthesis test")
+                    sys.exit(1)
+                result = generator.test_voice_synthesis(args.segments_file)
+                if result['success']:
+                    print(f"✓ Voice synthesis test successful!")
+                    print(f"  Audio clips: {result['audio_clips']}")
+                    print(f"  Duration: {result['total_duration']:.1f}s")
+                    print(f"  Audio dir: {result['audio_dir']}")
+                else:
+                    print(f"✗ Voice synthesis test failed: {result['error']}")
+                    sys.exit(1)
+                    
+            elif args.test_module == "visual":
+                if not args.segments_file:
+                    print("✗ --segments-file required for visual generation test")
+                    sys.exit(1)
+                result = generator.test_visual_generation(args.segments_file)
+                if result['success']:
+                    print(f"✓ Visual generation test successful!")
+                    print(f"  Segments: {result['segments']}")
+                    print(f"  Total visuals: {result['total_visuals']}")
+                    print(f"  Visual dir: {result['visual_dir']}")
+                else:
+                    print(f"✗ Visual generation test failed: {result['error']}")
+                    sys.exit(1)
+                    
+            elif args.test_module == "video":
+                if not args.audio_dir or not args.visual_dir:
+                    print("✗ --audio-dir and --visual-dir required for video composition test")
+                    sys.exit(1)
+                result = generator.test_video_composition(args.audio_dir, args.visual_dir)
+                if result['success']:
+                    print(f"✓ Video composition test successful!")
+                    print(f"  Video path: {result['video_path']}")
+                    print(f"  Duration: {result['duration']:.1f}s")
+                else:
+                    print(f"✗ Video composition test failed: {result['error']}")
+                    sys.exit(1)
+                    
+            elif args.test_module == "social":
+                print("✗ Social media test not implemented yet")
+                sys.exit(1)
+            
+            # Exit after module test
+            sys.exit(0)
         
         # Handle resume
         if args.resume:
