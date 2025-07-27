@@ -14,8 +14,8 @@
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/yourusername/youtube-shorts-generator.git
-cd youtube-shorts-generator
+git clone https://github.com/NJersyHiro/affiliate-youtube.git
+cd affiliate-youtube
 
 # 仮想環境の作成（推奨）
 python -m venv venv
@@ -31,8 +31,8 @@ pip install -e .
 ## セットアップ
 
 1. **必要なAPIキーの取得**
+   - **Google AI**: [Google AI Studio](https://makersuite.google.com/app/apikey)でGemini APIキーを取得
    - **YouTube API**: [Google Cloud Console](https://console.cloud.google.com/)でYouTube Data API v3を有効化
-   - **AI API**: OpenAIまたはAnthropicのAPIキーを取得
    - **TTS API**: Google Cloud TTS、Azure、またはAmazon Pollyのいずれかを設定
 
 2. **環境変数の設定**
@@ -68,16 +68,23 @@ result = generator.create_and_post(
 
 ```bash
 # 基本的な動画生成
-python -m src.main --service "タニタオンラインショップ" --url "https://example.com/affiliate/tanita"
+python -m src.main "タニタオンラインショップ" "https://example.com/affiliate/tanita"
 
 # 詳細オプション付き
-python -m src.main \
-    --service "タニタオンラインショップ" \
-    --url "https://example.com/affiliate/tanita" \
+python -m src.main "タニタオンラインショップ" "https://example.com/affiliate/tanita" \
     --style humorous \
-    --voice-id "ja-JP-Wavenet-B" \
-    --no-auto-post \
-    --output-dir output/videos
+    --auto-post \
+    --project-name "tanita_campaign"
+
+# バッチ処理
+python -m src.main dummy dummy --batch examples/batch_services.json
+
+# スケジュール投稿付きバッチ処理
+python -m src.main dummy dummy \
+    --batch examples/batch_services.json \
+    --auto-post \
+    --schedule-start "2024-02-01T10:00:00" \
+    --interval-hours 24
 ```
 
 ## プロジェクト構造
