@@ -1,0 +1,55 @@
+# Core dependencies
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+requests>=2.31.0
+jinja2>=3.1.2
+
+# AI / Script Generation
+google-generativeai>=0.3.0
+langchain>=0.0.340
+
+# Text-to-Speech (TTS)
+google-cloud-texttospeech>=2.14.0
+azure-cognitiveservices-speech>=1.32.0
+boto3>=1.28.0
+pydub>=0.25.1
+
+# Video Processing
+moviepy>=1.0.3
+opencv-python>=4.8.0
+pillow>=10.0.0
+ffmpeg-python>=0.2.0
+
+# Design & Animation
+matplotlib>=3.7.0
+seaborn>=0.12.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+
+# Data processing
+numpy>=1.24.0
+pandas>=2.1.0
+python-dateutil>=2.8.2
+
+# Utilities
+tqdm>=4.66.0
+colorlog>=6.7.0
+urllib3>=2.1.0
+
+# Development dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+black>=23.10.0
+flake8>=6.1.0
+mypy>=1.6.0
+isort>=5.12.0
+pre-commit>=3.5.0
+
+# Type stubs
+types-requests>=2.31.0
+types-PyYAML>=6.0.12

@@ -1,0 +1,174 @@
+# Default configuration for YouTube Shorts Generator
+
+# AI Script Generation
+script_generation:
+  provider: "openai"  # openai, anthropic, or local
+  api_key: ""  # Set via OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable
+  model: "gpt-4"  # or claude-3-opus for Anthropic
+  
+  # Script parameters
+  styles:
+    humorous:
+      tone: "funny, entertaining, casual"
+      structure: "hook, punchline, call-to-action"
+    educational:
+      tone: "informative, professional, clear"
+      structure: "problem, solution, benefits, call-to-action"
+    storytelling:
+      tone: "narrative, emotional, engaging"
+      structure: "setup, conflict, resolution, call-to-action"
+  
+  max_duration: 60  # seconds
+  language: "ja"
+  include_trends: true
+  
+# Text-to-Speech Configuration
+tts:
+  provider: "google"  # google, azure, or aws
+  api_key: ""  # Set via respective environment variables
+  
+  # Voice settings
+  google:
+    language_code: "ja-JP"
+    voice_name: "ja-JP-Wavenet-B"
+    speaking_rate: 1.0
+    pitch: 0.0
+    
+  azure:
+    region: "japaneast"
+    voice_name: "ja-JP-NanamiNeural"
+    
+  aws:
+    region: "ap-northeast-1"
+    voice_id: "Mizuki"
+    
+  # Common settings
+  audio_format: "mp3"
+  sample_rate: 24000
+  
+# Video Generation
+video:
+  resolution:
+    width: 1080
+    height: 1920  # 9:16 for Shorts
+  fps: 30
+  codec: "h264"
+  bitrate: "5M"
+  
+  # Visual style
+  background:
+    type: "gradient"  # gradient, solid, animated, image
+    colors:
+      - "#FF6B6B"
+      - "#4ECDC4"
+    animation_speed: 0.5
+    
+  text:
+    font: "Noto Sans JP"
+    size_title: 72
+    size_body: 48
+    color: "#FFFFFF"
+    stroke_color: "#000000"
+    stroke_width: 3
+    
+  transitions:
+    type: "fade"  # fade, slide, zoom
+    duration: 0.5
+    
+  # Effects
+  effects:
+    enable_particles: true
+    enable_emoji: true
+    enable_highlights: true
+    
+# YouTube Upload
+youtube:
+  api_key: ""  # Set via YOUTUBE_API_KEY environment variable
+  
+  # Upload defaults
+  upload:
+    privacy: "private"  # private, unlisted, public
+    category: "22"  # People & Blogs
+    tags:
+      - "アフィリエイト"
+      - "商品紹介"
+      - "おすすめ"
+    language: "ja"
+    
+  # Metadata generation
+  metadata:
+    title_template: "【{keyword}】{service_name}の魅力を{duration}秒で紹介！"
+    description_template: |
+      {service_name}の魅力をわかりやすく紹介します！
+      
+      詳細はこちら👇
+      {affiliate_url}
+      
+      #Shorts #{keyword} #アフィリエイト
+    
+    auto_generate_tags: true
+    max_tags: 30
+    
+# Performance & Optimization
+performance:
+  # Parallel processing
+  max_concurrent_jobs: 3
+  enable_gpu: false  # Enable if GPU available
+  
+  # Caching
+  cache_enabled: true
+  cache_dir: "cache"
+  cache_ttl: 86400  # 24 hours
+  
+  # Memory management
+  max_memory_usage: "4G"
+  batch_size: 10
+  
+# Output Settings
+output:
+  base_dir: "output"
+  
+  # Directory structure
+  dirs:
+    scripts: "scripts"
+    audio: "audio"
+    videos: "videos"
+    logs: "logs"
+    
+  # File naming
+  filename_pattern: "{timestamp}_{service_name}_{style}"
+  timestamp_format: "%Y%m%d_%H%M%S"
+  
+  # Cleanup
+  auto_cleanup: true
+  keep_days: 7
+  
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "youtube_shorts_generator.log"
+  
+# Rate Limiting
+rate_limits:
+  openai:
+    requests_per_minute: 50
+    tokens_per_minute: 40000
+    
+  youtube:
+    uploads_per_day: 10
+    
+  tts:
+    characters_per_minute: 5000
+    
+  # Retry settings
+  retry:
+    max_attempts: 3
+    backoff_factor: 2
+    max_backoff: 60
+    
+# Templates & Prompts
+templates:
+  prompt_dir: "config/prompts"
+  video_template_dir: "src/templates/video_templates"
+  audio_preset_dir: "src/templates/audio_presets"
