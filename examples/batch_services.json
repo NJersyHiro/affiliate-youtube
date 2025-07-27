@@ -1,0 +1,17 @@
+[
+    {
+        "name": "タニタ公式オンラインショップ",
+        "url": "https://example.com/affiliate/tanita",
+        "style": "humorous"
+    },
+    {
+        "name": "アマゾン プライム会員",
+        "url": "https://example.com/affiliate/amazon-prime",
+        "style": "educational"
+    },
+    {
+        "name": "楽天市場 スーパーセール",
+        "url": "https://example.com/affiliate/rakuten-sale",
+        "style": "storytelling"
+    }
+]

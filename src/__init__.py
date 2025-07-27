@@ -1,9 +1,6 @@
-"""YouTube Affiliate Automation Project.
+"""YouTube Shorts Generator - Automated video creation for affiliate marketing."""
 
-A modular system for searching YouTube videos, analyzing comments,
-and identifying users with purchase intent for affiliate products.
-"""
+from .main import YouTubeShortsGenerator
 
 __version__ = "0.1.0"
-__author__ = "YouTube Affiliate Team"
-__license__ = "MIT"
+__all__ = ["YouTubeShortsGenerator"]
