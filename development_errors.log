@@ -17,6 +17,15 @@ Changes Made:
 - Added 30 prebuilt Gemini voices with emotion mapping
 - Updated documentation to reflect simplified setup
 
+[2025-07-27 CLARIFICATION] [Models] [Configuration] Different models for script vs TTS
+Description: Gemini uses different models for text generation vs speech generation
+Solution: Clarified model usage in configuration
+Model Details:
+- Script Generation: "gemini-2.0-pro" (text generation)
+- Text-to-Speech: "gemini-2.5-flash-preview-tts" (audio generation)
+- TTS Input Limit: 8,000 tokens (vs 2048 for script generation)
+- Both use same GOOGLE_API_KEY
+
 ---
 
 [2024-01-27 13:00:00] [Setup] [MCP Error] Context7 MCP server not available for library lookup

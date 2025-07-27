@@ -4,11 +4,12 @@
 ai:
   gemini:
     api_key: ""  # Set via GOOGLE_API_KEY environment variable
-    model: "gemini-2.0-pro"
+    model: "gemini-2.0-pro"  # For script generation
     temperature: 0.8
     top_p: 0.95
     top_k: 40
     max_tokens: 2048
+    # Note: TTS uses different model (gemini-2.5-flash-preview-tts)
 
 script_generation:
   provider: "gemini"  # Using Gemini for script generation
@@ -38,8 +39,10 @@ tts:
   # Voice settings
   gemini:
     voice_name: "Kore"  # Default voice for Gemini TTS
+    model: "gemini-2.5-flash-preview-tts"  # TTS-specific model
     # Gemini automatically detects language from text
     # Supports natural language control for emotion/style
+    # Note: TTS models have 8K token input limit
   
   google:
     language_code: "ja-JP"

@@ -81,7 +81,7 @@ class VoiceSynthesizer:
             genai.configure(api_key=api_key)
             
             # Store the model name for TTS
-            self.gemini_model_name = "gemini-2.5-flash-preview-tts"
+            self.gemini_model_name = "gemini-2.5-flash-preview-tts"  # Correct model for TTS
             
             # Cache available voices
             self._cache_gemini_voices()
@@ -366,7 +366,7 @@ class VoiceSynthesizer:
             prompt_prefix = emotion_prompts.get(emotion, "")
             full_text = prompt_prefix + text
             
-            # Create the model
+            # Create the model with the TTS-specific model
             model = genai.GenerativeModel(model_name=self.gemini_model_name)
             
             # Generate audio with speech config
