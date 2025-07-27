@@ -1,10 +1,18 @@
 # Default configuration for YouTube Shorts Generator
 
 # AI Script Generation
+ai:
+  gemini:
+    api_key: ""  # Set via GOOGLE_API_KEY environment variable
+    model: "gemini-2.0-pro"
+    temperature: 0.8
+    top_p: 0.95
+    top_k: 40
+    max_tokens: 2048
+
 script_generation:
-  provider: "openai"  # openai, anthropic, or local
-  api_key: ""  # Set via OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable
-  model: "gpt-4"  # or claude-3-opus for Anthropic
+  provider: "gemini"  # Using Gemini for script generation
+  model: "gemini-2.0-pro"
   
   # Script parameters
   styles:
@@ -24,10 +32,15 @@ script_generation:
   
 # Text-to-Speech Configuration
 tts:
-  provider: "google"  # google, azure, or aws
-  api_key: ""  # Set via respective environment variables
+  provider: "gemini"  # gemini, google, azure, or aws
+  api_key: ""  # Uses GOOGLE_API_KEY for Gemini TTS
   
   # Voice settings
+  gemini:
+    voice_name: "Kore"  # Default voice for Gemini TTS
+    # Gemini automatically detects language from text
+    # Supports natural language control for emotion/style
+  
   google:
     language_code: "ja-JP"
     voice_name: "ja-JP-Wavenet-B"

@@ -11,6 +11,8 @@ YouTube Shortsアフィリエイト動画生成システムの使い方
 2. 「Get API key」をクリック
 3. 生成されたAPIキーをコピー
 
+**注意**: Gemini APIキー1つでスクリプト生成と音声合成の両方が使用できます！
+
 #### YouTube API認証情報
 1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
 2. 新しいプロジェクトを作成または既存のプロジェクトを選択
@@ -94,8 +96,8 @@ pip install -r requirements.txt
 - 認証フローを最後まで完了したか確認
 
 #### 4. 音声合成エラー
-- TTS APIキーが設定されているか確認
-- デフォルトではGoogle Cloud TTSを使用するため、認証が必要
+- GOOGLE_API_KEYが設定されているか確認
+- Gemini TTSはスクリプト生成と同じAPIキーを使用
 
 ### エラーログの確認
 

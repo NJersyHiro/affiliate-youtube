@@ -8,8 +8,8 @@ pyyaml>=6.0.1
 requests>=2.31.0
 jinja2>=3.1.2
 
-# AI / Script Generation
-google-generativeai>=0.3.0
+# AI / Script Generation & TTS
+google-generativeai>=0.8.0  # Latest version with TTS support
 langchain>=0.0.340
 
 # Text-to-Speech (TTS)

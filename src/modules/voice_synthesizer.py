@@ -17,7 +17,7 @@ from ..utils.exceptions import TTSError, ConfigurationError
 class VoiceSynthesizer:
     """Synthesize voice from text using various TTS providers."""
     
-    SUPPORTED_PROVIDERS = ["google_cloud", "azure", "aws", "elevenlabs"]
+    SUPPORTED_PROVIDERS = ["gemini", "google_cloud", "azure", "aws", "elevenlabs"]
     
     def __init__(self, config: Optional[Config] = None):
         """Initialize the voice synthesizer.
@@ -29,7 +29,7 @@ class VoiceSynthesizer:
         self.logger = get_logger(__name__)
         
         # Get TTS provider from config
-        self.provider = self.config.get("tts.provider", "google_cloud")
+        self.provider = self.config.get("tts.provider", "gemini")
         if self.provider not in self.SUPPORTED_PROVIDERS:
             raise ConfigurationError(f"Unsupported TTS provider: {self.provider}")
         
@@ -45,7 +45,9 @@ class VoiceSynthesizer:
     def _init_tts_client(self) -> None:
         """Initialize the TTS client based on provider."""
         try:
-            if self.provider == "google_cloud":
+            if self.provider == "gemini":
+                self._init_gemini_tts()
+            elif self.provider == "google_cloud":
                 self._init_google_cloud_tts()
             elif self.provider == "azure":
                 self._init_azure_tts()
@@ -64,6 +66,55 @@ class VoiceSynthesizer:
                 exception=e
             )
             raise TTSError(f"TTS initialization failed: {str(e)}")
+    
+    def _init_gemini_tts(self) -> None:
+        """Initialize Gemini TTS client."""
+        try:
+            import google.generativeai as genai
+            
+            # Get API key from config or environment
+            api_key = self.config.get("ai.gemini.api_key") or os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ConfigurationError("Google API key not found for Gemini TTS")
+            
+            # Configure the API key
+            genai.configure(api_key=api_key)
+            
+            # Store the model name for TTS
+            self.gemini_model_name = "gemini-2.5-flash-preview-tts"
+            
+            # Cache available voices
+            self._cache_gemini_voices()
+            
+            self.logger.info("Initialized Gemini TTS client")
+            
+        except ImportError:
+            raise TTSError("google-generativeai not installed. "
+                         "Install with: pip install google-generativeai")
+        except Exception as e:
+            raise TTSError(f"Gemini TTS initialization failed: {str(e)}")
+    
+    def _cache_gemini_voices(self) -> None:
+        """Cache available Gemini voices."""
+        # Gemini has 30 prebuilt voices
+        self.gemini_voices = [
+            "Kore", "Puck", "Charon", "Fenrir", "Aoede", "Krypton",
+            "Zephyr", "Orea", "Lyra", "Altair", "Ceres", "Draco",
+            "Electra", "Helios", "Nova", "Orion", "Perseus", "Phoenix",
+            "Rigel", "Sirius", "Titan", "Vega", "Astraea", "Luna",
+            "Sol", "Aria", "Castor", "Pollux", "Rhea", "Selene"
+        ]
+        
+        # Map emotions to suitable voices for Japanese content
+        self.emotion_voice_map = {
+            "excited": ["Puck", "Phoenix", "Nova"],
+            "happy": ["Kore", "Luna", "Aria"],
+            "surprised": ["Zephyr", "Electra", "Sirius"],
+            "curious": ["Lyra", "Vega", "Selene"],
+            "neutral": ["Aoede", "Altair", "Sol"]
+        }
+        
+        self.logger.info(f"Cached {len(self.gemini_voices)} Gemini voices")
     
     def _init_google_cloud_tts(self) -> None:
         """Initialize Google Cloud TTS client."""
@@ -213,7 +264,9 @@ class VoiceSynthesizer:
             
         # Synthesize based on provider
         audio_data = None
-        if self.provider == "google_cloud":
+        if self.provider == "gemini":
+            audio_data = self._synthesize_gemini(text, settings, segment.emotion)
+        elif self.provider == "google_cloud":
             audio_data = self._synthesize_google_cloud(text, settings, segment.emotion)
         elif self.provider == "azure":
             audio_data = self._synthesize_azure(text, settings, segment.emotion)
@@ -263,6 +316,7 @@ class VoiceSynthesizer:
     def _get_default_voice(self) -> str:
         """Get default voice for the provider."""
         defaults = {
+            "gemini": "Kore",
             "google_cloud": "ja-JP-Neural2-B",
             "azure": "ja-JP-NanamiNeural",
             "aws": "Mizuki",
@@ -282,6 +336,74 @@ class VoiceSynthesizer:
         text = re.sub(r'\s+', ' ', text).strip()
         
         return text
+    
+    def _synthesize_gemini(
+        self,
+        text: str,
+        settings: AudioSettings,
+        emotion: str
+    ) -> bytes:
+        """Synthesize using Gemini TTS."""
+        try:
+            import google.generativeai as genai
+            from google.generativeai import types
+            
+            # Select voice based on emotion
+            voice_name = settings.voice_name
+            if emotion in self.emotion_voice_map and voice_name == self._get_default_voice():
+                # Use emotion-appropriate voice if using default
+                voice_name = self.emotion_voice_map[emotion][0]
+            
+            # Create natural language prompt for emotion control
+            emotion_prompts = {
+                "excited": "Say this with excitement and enthusiasm: ",
+                "happy": "Say this cheerfully and warmly: ",
+                "surprised": "Say this with surprise and amazement: ",
+                "curious": "Say this with curiosity and interest: ",
+                "neutral": ""
+            }
+            
+            prompt_prefix = emotion_prompts.get(emotion, "")
+            full_text = prompt_prefix + text
+            
+            # Create the model
+            model = genai.GenerativeModel(model_name=self.gemini_model_name)
+            
+            # Generate audio with speech config
+            response = model.generate_content(
+                contents=full_text,
+                generation_config=types.GenerateContentConfig(
+                    response_modalities=["AUDIO"],
+                    speech_config=types.SpeechConfig(
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                voice_name=voice_name,
+                            )
+                        )
+                    ),
+                )
+            )
+            
+            # Extract audio data from response
+            if response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                if candidate.content and candidate.content.parts:
+                    for part in candidate.content.parts:
+                        # Check if this part contains audio data
+                        if hasattr(part, 'inline_data') and part.inline_data:
+                            if part.inline_data.mime_type and 'audio' in part.inline_data.mime_type:
+                                return part.inline_data.data
+            
+            raise TTSError("No audio data in Gemini response")
+            
+        except Exception as e:
+            dev_error_logger.log_error(
+                module="VoiceSynthesizer",
+                error_type="GeminiTTSError",
+                description=f"Failed to synthesize with Gemini TTS",
+                exception=e
+            )
+            raise TTSError(f"Gemini TTS synthesis failed: {str(e)}")
     
     def _synthesize_google_cloud(
         self,
@@ -600,7 +722,15 @@ class VoiceSynthesizer:
         Returns:
             Dictionary mapping language codes to voice information
         """
-        if self.provider == "google_cloud" and hasattr(self, 'available_voices'):
+        if self.provider == "gemini" and hasattr(self, 'gemini_voices'):
+            # Gemini supports multiple languages automatically
+            return {
+                "multilingual": [
+                    {"name": voice, "gender": "Neutral", "description": f"Gemini voice {voice}"}
+                    for voice in self.gemini_voices
+                ]
+            }
+        elif self.provider == "google_cloud" and hasattr(self, 'available_voices'):
             if language_code:
                 return {language_code: self.available_voices.get(language_code, [])}
             return self.available_voices

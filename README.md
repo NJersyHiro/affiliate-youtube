@@ -4,8 +4,8 @@
 
 ## 機能
 
-- 🤖 **AIスクリプト生成**: トレンドを意識した魅力的な動画スクリプトを自動生成
-- 🎤 **音声合成**: 高品質なTTSエンジンで自然な音声に変換
+- 🤖 **AIスクリプト生成**: Gemini 2.0 Proでトレンドを意識した魅力的な動画スクリプトを自動生成
+- 🎤 **音声合成**: Gemini内蔵の高品質TTSで感情豊かな音声に変換
 - 🎥 **動画生成**: 背景、テキスト、アニメーションを統合した動画作成
 - 🎬 **自動編集**: 音声と映像を同期し、字幕やBGMを追加
 - 📤 **SNS自動投稿**: YouTube Shortsへの自動アップロードと投稿管理
@@ -31,9 +31,8 @@ pip install -e .
 ## セットアップ
 
 1. **必要なAPIキーの取得**
-   - **Google AI**: [Google AI Studio](https://makersuite.google.com/app/apikey)でGemini APIキーを取得
+   - **Google AI**: [Google AI Studio](https://makersuite.google.com/app/apikey)でGemini APIキーを取得（スクリプト生成とTTSの両方に使用）
    - **YouTube API**: [Google Cloud Console](https://console.cloud.google.com/)でYouTube Data API v3を有効化
-   - **TTS API**: Google Cloud TTS、Azure、またはAmazon Pollyのいずれかを設定
 
 2. **環境変数の設定**
    ```bash
